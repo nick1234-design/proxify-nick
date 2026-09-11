@@ -1,30 +1,50 @@
 import fetch from 'node-fetch';
 
+export async function handler(event, context) {
+  try {
+    const destination = event.queryStringParameters?.destination;
 
+    if (!destination) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'text/plain'
+        },
+        body: 'Missing destination parameter'
+      };
+    }
 
-export async function handler (event, context) {
-	try {
-		const data = JSON.parse(event.body);
-		const { pageURL } = data;
+    const response = await fetch(destination, {
+      method: event.httpMethod || 'GET',
+      headers: {
+        'User-Agent':
+          event.headers?.['user-agent'] ||
+          'Mozilla/5.0'
+      }
+    });
 
-		const res = await fetch(pageURL);
-		const htmlContent = await res.text();
+    const body = await response.text();
 
-		return {
-			statusCode: 200,
-			body: htmlContent,
-		};
-	} catch (e) {
-		let responseBody = "Something bad happened!";
-		if (e instanceof SyntaxError) {
-			responseBody = "Bad JSON!";
-		} else if (e instanceof TypeError) {
-			responseBody = "Bad URL!";
-		}
-
-		return {
-			statusCode: 404,
-			body: responseBody,
-		};
-	}
+    return {
+      statusCode: response.status,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*',
+        'Content-Type':
+          response.headers.get('content-type') || 'text/plain'
+      },
+      body
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'text/plain'
+      },
+      body: 'Proxy error: ' + error.message
+    };
+  }
 }
